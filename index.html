@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>WebRTC Chat Demo</title>
+    </head>
+    <body>
+        <button id="creatOffer">createOffer</button>
+        offerPayload: <input id="offerPayload"/>
+        answerPayload: <input id="answerPayload"/>
+        <script>
+            //print any errors
+            function error(err){
+                console.error(err);
+            }
+            function ignore(){}
+
+            //compatibility for firefox and chrome
+            var RTCPeerConnection = window.RTCPeerConnection
+                || window.mozRTCPeerConnection
+                || window.webkitRTCPeerConnection;
+            var RTCSessionDescription = window.RTCSessionDescription
+                || window.mozRTCSessionDescription
+                || window.webkitRTCSessionDescription;
+            var RTCIceCandidate = window.RTCIceCandidate
+                || window.mozRTCIceCandidate
+                || window.webkitRTCIceCandidate;
+
+            //create a new connection
+            var peerConnection = new RTCPeerConnection({iceServers: [{url: "stun:stun.services.mozilla.com"}]});
+            var iceCandidates = [];
+
+            //listen for data channel and messages
+            peerConnection.ondatachannel = function(evt){
+                var dataChannel = evt.channel;
+                dataChannel.binaryType = "arraybuffer";
+                dataChannel.onopen = function(evt){
+                    setTimeout(function(){
+                        dataChannel.send("Hello World!");
+                    }, 500);
+                };
+                dataChannel.onmessage = function(msg){
+                    console.log("dataChannel.onmessage", msg.data);
+                };
+            }
+
+
+            //initiate the connection
+            document.getElementById("creatOffer").onclick = function(evt){
+
+                //create the data channel for the initiator
+                var dataChannel = peerConnection.createDataChannel("webrtc-chat");
+                dataChannel.binaryType = "arraybuffer";
+                dataChannel.onopen = function(evt){
+                    setTimeout(function(){
+                        dataChannel.send("Hello World!");
+                    }, 500);
+                };
+                dataChannel.onmessage = function(msg){
+                    console.log("dataChannel.onmessage", msg.data);
+                };
+
+                //create the offer payload
+                peerConnection.createOffer(function(localOffer){
+
+                    //build the offer payload
+                    function buildOffer(){
+                        console.log("offerPayload", window.btoa(JSON.stringify([
+                            localOffer.sdp.replace(/\r/g, ""),
+                            iceCandidates,
+                        ])));
+                    }
+
+                    //populate ICE candidates
+                    peerConnection.onicecandidate = function(evt){
+                        if(evt.candidate){
+                            iceCandidates.push(evt.candidate.candidate);
+                        }
+                        else{
+                            buildOffer();
+                        }
+                    };
+
+                    //trigger STUN requests
+                    peerConnection.setLocalDescription(localOffer, ignore, error);
+                }, error);
+            };
+
+            //wait for a offer payload (offer and ice candidates)
+            document.getElementById("offerPayload").onblur = function(evt){
+                var payload = JSON.parse(window.atob(evt.target.value));
+
+                //configure the peer connection as a receiver of an offer
+                var offer = new RTCSessionDescription({
+                    "type": "offer",
+                    "sdp": payload[0],
+                });
+                peerConnection.setRemoteDescription(offer, function(){
+
+                    //set the ice candidates for the peer connection
+                    for(var i = 0; i < payload[1].length; i++){
+                        var iceCandidate = new RTCIceCandidate({
+                            sdpMLineIndex: 0,
+                            candidate: payload[1][i],
+                        });
+                        peerConnection.addIceCandidate(iceCandidate, ignore, error);
+                    }
+
+                    //create the answer payload
+                    peerConnection.createAnswer(function(answer){
+
+                        //build the answer payload
+                        function buildAnswer(){
+                            console.log("answerPayload", window.btoa(JSON.stringify([
+                                answer.sdp.replace(/\r/g, ""),
+                                iceCandidates,
+                            ])));
+                        }
+
+                        //populate ICE candidates
+                        peerConnection.onicecandidate = function(evt){
+                            if(evt.candidate){
+                                iceCandidates.push(evt.candidate.candidate);
+                            }
+                            else{
+                                buildAnswer();
+                            }
+                        };
+
+                        //trigger STUN requests
+                        peerConnection.setLocalDescription(answer, ignore, error);
+                    }, error);
+                }, error);
+            };
+
+            //wait for a answer payload (answer and ice candidates)
+            document.getElementById("answerPayload").onblur = function(evt){
+                var payload = JSON.parse(window.atob(evt.target.value));
+
+                //set the answer from the remote peer
+                var remoteAnswer = new RTCSessionDescription({
+                    "type": "answer",
+                    "sdp": payload[0],
+                });
+                peerConnection.setRemoteDescription(remoteAnswer, function(){
+
+                    //set the ice candidates for the peer connection
+                    for(var i = 0; i < payload[1].length; i++){
+                        var iceCandidate = new RTCIceCandidate({
+                            sdpMLineIndex: 0,
+                            candidate: payload[1][i],
+                        });
+                        peerConnection.addIceCandidate(iceCandidate, ignore, error);
+                    }
+                }, error);
+            };
+        </script>
+    </body>
+</html>
