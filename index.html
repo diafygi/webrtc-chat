@@ -10,9 +10,7 @@
         answerPayload: <input id="answerPayload"/>
         <script>
             //print any errors
-            function error(err){
-                console.error(err);
-            }
+            function error(err){console.error(err);}
             function ignore(){}
 
             //compatibility for firefox and chrome
@@ -36,7 +34,7 @@
                 dataChannel.binaryType = "arraybuffer";
                 dataChannel.onopen = function(evt){
                     setTimeout(function(){
-                        dataChannel.send("Hello World!");
+                        dataChannel.send("Hello World from the receiver!");
                     }, 500);
                 };
                 dataChannel.onmessage = function(msg){
@@ -53,7 +51,7 @@
                 dataChannel.binaryType = "arraybuffer";
                 dataChannel.onopen = function(evt){
                     setTimeout(function(){
-                        dataChannel.send("Hello World!");
+                        dataChannel.send("Hello World from the initiator!");
                     }, 500);
                 };
                 dataChannel.onmessage = function(msg){
@@ -74,7 +72,9 @@
                     //populate ICE candidates
                     peerConnection.onicecandidate = function(evt){
                         if(evt.candidate){
-                            iceCandidates.push(evt.candidate.candidate);
+                            iceCandidates.push(
+                                evt.candidate.candidate.split("candidate:")[1]
+                            );
                         }
                         else{
                             buildOffer();
@@ -101,7 +101,7 @@
                     for(var i = 0; i < payload[1].length; i++){
                         var iceCandidate = new RTCIceCandidate({
                             sdpMLineIndex: 0,
-                            candidate: payload[1][i],
+                            candidate: "candidate:" + payload[1][i],
                         });
                         peerConnection.addIceCandidate(iceCandidate, ignore, error);
                     }
@@ -120,7 +120,9 @@
                         //populate ICE candidates
                         peerConnection.onicecandidate = function(evt){
                             if(evt.candidate){
-                                iceCandidates.push(evt.candidate.candidate);
+                                iceCandidates.push(
+                                    evt.candidate.candidate.split("candidate:")[1]
+                                );
                             }
                             else{
                                 buildAnswer();
@@ -148,7 +150,7 @@
                     for(var i = 0; i < payload[1].length; i++){
                         var iceCandidate = new RTCIceCandidate({
                             sdpMLineIndex: 0,
-                            candidate: payload[1][i],
+                            candidate: "candidate:" + payload[1][i],
                         });
                         peerConnection.addIceCandidate(iceCandidate, ignore, error);
                     }
