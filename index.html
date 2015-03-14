@@ -2,12 +2,165 @@
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-        <title>WebRTC Chat Demo</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+        <title>WebRTC Data Demo</title>
+        <style>
+            *{box-sizing;border-box;}
+            body,html{height:100%;margin:0;padding:0px 10px;font-family:sans-serif;font-size:14px;color:#242424;}
+            #wrapper{display:table;height:100%;width:100%;}
+            #wrapper > *{display:table-row;}
+
+            #header{margin-bottom:10px;}
+            #header > h1{display:inline-block;padding-right:10px;font-size:26px;margin:10px 0px 0px 0px;}
+            #header > #room-title{display:inline-block;font-size:20px;}
+            #header > #room-title > #approve-link{display:inline-block;font-size:12px;margin-left:10px;}
+            #header > #room-title > #leave-link{display:inline-block;font-size:12px;margin-left:10px;}
+            @media(max-width: 500px){
+                #header > h1{font-size:20px;}
+                #header > #room-title{font-size:16px;}
+            }
+
+            #userlist{display:inline-block;padding:0px;margin:0;}
+            #userlist > li{list-style:none;display:inline-block;padding:3px 8px;
+                margin:0px 10px 10px 0px;background-color:#cccccc;font-size:12px;}
+            #userlist > li > a{color:#cccccc;text-decoration:none;}
+            #userlist > li:hover > a{color:#242424;}
+            #userlist-wrapper > a{display:inline-block;font-size:12px;margin-bottom:10px;}
+
+            #room-wrapper{height:100%;}
+            #room{height:100%;padding:0;margin:0;overflow:auto;
+                border:1px solid #555555;box-shadow: 2px 2px 3px #777777;}
+            #room > li{padding:10px 5px 10px 10px;list-style:none;border-bottom:1px solid #eeeeee;}
+            #room > li > *{vertical-align:middle;display:inline-block;}
+            #room > li > .date{float:right;}
+
+            #form{display:table;width:100%;margin-top:10px;}
+            #form > *{display:table-cell;vertical-align:middle;}
+            #form > #input-wrapper{width:auto;}
+            #form > #input-wrapper > #input{width:100%;padding:2px 0px 2px 5px;height:25px;
+                border:1px solid #555555;box-shadow: 2px 2px 3px #777777;}
+            #form > #submit-wrapper{width:220px;text-align:right;}
+            #form > #submit-wrapper > #submit{margin-right:10px;width:80px;font-size:14px;
+                    border:1px solid #555555;box-shadow: 2px 2px 3px #777777;background-color:#eeeeee;}
+            @media(max-width: 600px){
+                #form{display:block;}
+                #form > *{display:inline-block;}
+                #form > #input-wrapper{width:100%;}
+                #form > #submit-wrapper{min-width:210px;text-align:left;margin-top:10px;}
+            }
+
+            #footer{margin:10px 0px;}
+            #footer > a{font-size:12px;}
+        </style>
     </head>
     <body>
+        <div id="wrapper">
+            <div id="header-wrapper">
+                <div id="header">
+                    <h1>WebRTC Data Demo</h1>
+                    <span id="room-title">
+                        Room:
+                        <a id="room-id" href="#">283y34iobfua...</a>
+                        <a id="approve-link" href="#">approve new users</a>
+                        <a id="leave-link" href="#">leave room</a>
+                    </span>
+                </div>
+            </div>
+            <div id="userlist-wrapper">
+                Users in the room:
+                <ul id="userlist">
+                    <li id="user_dcbwue4">dcbwue4 (you)</li>
+                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
+                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
+                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
+                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
+                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
+                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
+                </ul>
+                <a id="invite-link" href="#">invite users</a>
+            </div>
+            <div id="room-wrapper">
+                <ul id="room">
+                    <li>
+                        <span class="date">1/1/15 12:19am</span>
+                        <span class="user">dcbwue4:</span>
+                        <span class="text">Hey</span>
+                    </li>
+                    <li>
+                        <span class="date">1/1/15 12:19am</span>
+                        <span class="user">hm4y9w3:</span>
+                        <span class="file">
+                            <a href="#" download="aaa.jpg">
+                                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABc0lEQVRo3u2av0oDQRCHrzNa2CYaQ2JIc/gcQgQLH0JSSch7pD3BNxDEws5CjViIreAfJAQlBJIyTYrAifpbOOEY4nmXTHb3kim+Zo/bmQ92ZnePc1zXdSaQB5U5sg0yf8ROBB3YAW3wrYFP0AIHnAIPmpKnXIA1DgHfkIDidhoJOhCe8BhUmemH5n8CAxKzlVQiSuCIo8gIndD8HsiC11kkTAuosRx4I7FvwGpaBBSbE7rfdRwJWwR+955OUgmbBBQF8E7yuIqSsE1AUQQfcSVsFFCUQJfkc5YmAUUZ9EhO+2kScIKD35AsJWsE7oIY/3EfekcddVZMCjwznJlKJgU8BoGKSYF1cApGaRWYhqoILKLAFqiDBhN7ugWazNdJX7eAN4c7sVaBw+CzCFfyj1LEIiBtVNqotFFpoyKwTAI18MVYAy/ShZZtH9gInnPtxLtSxCIgAiKweALnjG1yFk6SCIwN/moQl3yUwKXlybfpEvsBy/Fj03/lbb4AAAAASUVORK5CYII="/>
+                            </a>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            <div id="form-wrapper">
+                <form id="form">
+                    <div id="input-wrapper">
+                        <input id="input" placeholder="type message here"/>
+                    </div>
+                    <div id="submit-wrapper">
+                        <input id="submit" type="submit" value="Submit"/>
+                        or <a id="upload" href="#">upload a file</a>
+                    </div>
+                </form>
+            </div>
+            <div id="footer-wrapper">
+                <div id="footer">
+                    <a href="https://github.com/diafygi/webrtc-data-demo" target="_blank">https://github.com/diafygi/webrtc-data-demo</a>
+                </div>
+            </div>
+        </div>
+        <script>
+            //resize the chat window since Firefox doesn't recognize
+            //overflow:scroll with height:100%;
+            function resizer(){
+                var room_px = window.innerHeight - 1 -
+                              document.getElementById("header-wrapper").clientHeight -
+                              document.getElementById("userlist-wrapper").clientHeight -
+                              document.getElementById("form-wrapper").clientHeight -
+                              document.getElementById("footer-wrapper").clientHeight;
+                document.getElementById("room").style.height = room_px > 200 ? room_px + "px" : "200px";
+            }
+            resizer();
+            window.onresize = resizer;
+        </script>
+
+        <!--
+        <div id="modal-background"></div>
+        <div id="new-modal" class="modal">
+            <a class="close-modal" href="#">close</a>
+            <h1>Your room link:</h1>
+            <p>Share this with the people you want to join. NOTE: This room will be forgotten when you leave it or close this window.</p>
+            <textarea id="new-room-id"></textarea>
+        </div>
+        <div id="request-modal" class="modal">
+            <a class="close-modal" href="#">close</a>
+            <h1>Here is your request code:</h1>
+            <p>Share this with the room owner so they can approve you to join.</p>
+            <textarea id="request-code"></textarea>
+        </div>
+        <div id="approve-modal" class="modal">
+            <a class="close-modal" href="#">close</a>
+            <h1>Approve the following user code:</h1>
+            <textarea id="approve-code"></textarea>
+            <button id="approve">Approve</button>
+        </div>
+        <div id="start-modal" class="modal">
+            <h1>Welcome to the WebRTC Data Demo</h1>
+            <a id="new" href="#">Create a new room</a>
+            <a id="join" href="#">Join an existing room</a>
+        </div>
+        -->
+
+        <!--
         <button id="creatOffer">createOffer</button>
         offerPayload: <input id="offerPayload"/>
         answerPayload: <input id="answerPayload"/>
+        -->
         <script>
             //print any errors
             function error(err){console.error(err);}
