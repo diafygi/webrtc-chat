@@ -3,20 +3,21 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-        <title>WebRTC Data Demo</title>
+        <title>Encrypted P2P Chat Demo</title>
         <style>
-            *{box-sizing;border-box;}
             body,html{height:100%;margin:0;padding:0px 10px;font-family:sans-serif;font-size:14px;color:#242424;}
             #wrapper{display:table;height:100%;width:100%;}
             #wrapper > *{display:table-row;}
 
             #header{margin-bottom:10px;}
-            #header > h1{display:inline-block;padding-right:10px;font-size:26px;margin:10px 0px 0px 0px;}
-            #header > #room-title{display:inline-block;font-size:20px;}
-            #header > #room-title > #approve-link{display:inline-block;font-size:12px;margin-left:10px;}
-            #header > #room-title > #leave-link{display:inline-block;font-size:12px;margin-left:10px;}
+            #header > h1{display:inline-block;padding-right:10px;font-size:26px;
+                margin:10px 0px 0px 0px;line-height:0.8em;vertical-align:middle;}
+            #header > h1 > span{font-weight:normal;font-size:14px;color:#ff0000;}
+            #header > #room-title{display:inline-block;font-size:20px;vertical-align:middle;}
+            #header > #room-title > #open-leave{display:inline-block;font-size:12px;margin-left:10px;}
             @media(max-width: 500px){
                 #header > h1{font-size:20px;}
+                #header > h1 > span{font-size:10px;}
                 #header > #room-title{font-size:16px;}
             }
 
@@ -25,20 +26,20 @@
                 margin:0px 10px 10px 0px;background-color:#cccccc;font-size:12px;}
             #userlist > li > a{color:#cccccc;text-decoration:none;}
             #userlist > li:hover > a{color:#242424;}
-            #userlist-wrapper > a{display:inline-block;font-size:12px;margin-bottom:10px;}
+            #userlist-wrapper > a{display:inline-block;font-size:12px;margin:0px 10px 10px 0px;}
 
             #room-wrapper{height:100%;}
             #room{height:100%;padding:0;margin:0;overflow:auto;
                 border:1px solid #555555;box-shadow: 2px 2px 3px #777777;}
             #room > li{padding:10px 5px 10px 10px;list-style:none;border-bottom:1px solid #eeeeee;}
-            #room > li > *{vertical-align:middle;display:inline-block;}
+            #room > li > *{vertical-align:top;display:inline-block;}
             #room > li > .date{float:right;}
 
             #form{display:table;width:100%;margin-top:10px;}
             #form > *{display:table-cell;vertical-align:middle;}
             #form > #input-wrapper{width:auto;}
             #form > #input-wrapper > #input{width:100%;padding:2px 0px 2px 5px;height:25px;
-                border:1px solid #555555;box-shadow: 2px 2px 3px #777777;}
+                border:1px solid #555555;box-shadow: 2px 2px 3px #777777;box-sizing:border-box;}
             #form > #submit-wrapper{width:220px;text-align:right;}
             #form > #submit-wrapper > #submit{margin-right:10px;width:80px;font-size:14px;
                     border:1px solid #555555;box-shadow: 2px 2px 3px #777777;background-color:#eeeeee;}
@@ -50,37 +51,53 @@
             }
 
             #footer{margin:10px 0px;}
-            #footer > a{font-size:12px;}
+            #footer > a{display:inline-block;font-size:12px;}
+            #footer > span{float:right;font-size:12px;}
+            @media(max-width: 700px){
+                #footer > span{float:none;display:block;margin-bottom:5px;}
+            }
+
+            #modal-wrapper{position:absolute;top:0px;left:0px;height:100%;width:100%;
+                text-align:center;background-color:rgba(0,0,0,0.3);z-index:1;}
+            #modal-helper{display:inline-block;height:100%;width:0px;vertical-align:middle;}
+            .modal{display:inline-block;width:80%;max-width:600px;vertical-align:middle;padding:20px 20px 30px 20px;
+                background-color:#ffffff;border-radius:10px;box-shadow: 0px 0px 10px #777777;box-sizing:border-box;}
+            .modal > h1{margin:0;font-size:25px;}
+            .modal > .close-modal{float:right;text-decoration:none;font-size:12px;}
+            .modal > textarea{height:200px;padding:5px;width:100%;border:1px solid #555555;box-sizing:border-box;}
+            .modal > p{text-align:left;margin:10px 0px;}
+            .modal > button{font-size:16px;margin-top:10px;border:1px solid #555555;
+                box-shadow: 2px 2px 3px #777777;background-color:#eeeeee;}
         </style>
     </head>
     <body>
         <div id="wrapper">
             <div id="header-wrapper">
                 <div id="header">
-                    <h1>WebRTC Data Demo</h1>
+                    <h1>Encrypted P2P Chat<br/><span>Experimental! Don't use for real secrets!</span></h1>
                     <span id="room-title">
                         Room:
-                        <a id="room-id" href="#">283y34iobfua...</a>
-                        <a id="approve-link" href="#">approve new users</a>
-                        <a id="leave-link" href="#">leave room</a>
+                        <span id="room-name"></span>
+                        <a id="open-leave" href="#" style="display:none;">leave room</a>
                     </span>
                 </div>
             </div>
             <div id="userlist-wrapper">
                 Users in the room:
                 <ul id="userlist">
+                    <!--
                     <li id="user_dcbwue4">dcbwue4 (you)</li>
                     <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
                     <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
                     <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
-                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
-                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
-                    <li id="user_dcbwue4">dcbwue4 <a href="#">X</a></li>
+                    -->
                 </ul>
-                <a id="invite-link" href="#">invite users</a>
+                <a id="open-invite" href="#" style="display:none;">invite users</a>
+                <a id="open-approve" href="#" style="display:none;">approve user requests</a>
             </div>
             <div id="room-wrapper">
                 <ul id="room">
+                    <!--
                     <li>
                         <span class="date">1/1/15 12:19am</span>
                         <span class="user">dcbwue4:</span>
@@ -95,6 +112,7 @@
                             </a>
                         </span>
                     </li>
+                    -->
                 </ul>
             </div>
             <div id="form-wrapper">
@@ -110,58 +128,92 @@
             </div>
             <div id="footer-wrapper">
                 <div id="footer">
+                    <span>All data will be forgotten when you leave.</span>
                     <a href="https://github.com/diafygi/webrtc-data-demo" target="_blank">https://github.com/diafygi/webrtc-data-demo</a>
                 </div>
             </div>
         </div>
+        <div id="modal-wrapper" style="display:none;">
+            <div id="modal-helper"></div>
+            <div id="invite-modal" class="modal" style="display:none;">
+                <a id="close-invite" class="close-modal" href="#">close</a>
+                <h1>Your new invite link:</h1>
+                <p>Copy this link and share it with the person you want to invite. NOTE: Each invite can only be used once, so generate a new one for each person.</p>
+                <p><a id="generate-invite" href="#">Generate new invite</a></p>
+                <textarea id="invite-code" readonly="readonly"></textarea>
+            </div>
+            <div id="request-modal" class="modal" style="display:none;">
+                <a id="close-request" class="close-modal" href="#">close</a>
+                <h1>Here is your request code:</h1>
+                <p>Copy this request code and share it with the person who invited you.</p>
+                <textarea id="request-code"></textarea>
+            </div>
+            <div id="approve-modal" class="modal" style="display:none;">
+                <a id="close-approve" class="close-modal" href="#">cancel</a>
+                <h1>Approve a request code:</h1>
+                <p>Paste the request code you received and click Approve.</p>
+                <textarea id="approve-code" placeholder="e.g. invite=asfjhjrifbvuy4785uhgfyew3895grvesufns...."></textarea>
+                <button id="approve-request">Approve</button>
+            </div>
+            <div id="join-modal" class="modal" style="display:none;">
+                <a id="close-join" class="close-modal" href="#">back</a>
+                <h1>Paste the invite:</h1>
+                <p>Paste the invite link you received to generate a request code.</p>
+                <textarea id="join-code" placeholder="e.g. https://diafygi.github.com/webrtc-chat/#asfjhjrifbvuy4ns...."></textarea>
+                <button id="generate-request">Generate request code</button>
+            </div>
+            <div id="start-modal" class="modal" style="display:none;">
+                <h1>Encrypted P2P Chat Demo</h1>
+                <a id="new-room" href="#">Create a new room</a>
+                <a id="join-room" href="#">Join an existing room</a>
+            </div>
+        </div>
         <script>
-            //resize the chat window since Firefox doesn't recognize
-            //overflow:scroll with height:100%;
+
+            /*************************
+            **************************
+            **** Helper Functions ****
+            **************************
+            *************************/
+
+            //resize the chat window since Firefox doesn't recognize overflow:scroll; with height:100%;
             function resizer(){
-                var room_px = window.innerHeight - 1 -
+                var room_px = window.innerHeight - 2 -
                               document.getElementById("header-wrapper").clientHeight -
                               document.getElementById("userlist-wrapper").clientHeight -
                               document.getElementById("form-wrapper").clientHeight -
-                              document.getElementById("footer-wrapper").clientHeight;
+                              document.getElementById("footer-wrapper").clientHeight -
+                              document.getElementById("modal-wrapper").clientHeight;
                 document.getElementById("room").style.height = room_px > 200 ? room_px + "px" : "200px";
             }
             resizer();
             window.onresize = resizer;
-        </script>
 
-        <!--
-        <div id="modal-background"></div>
-        <div id="new-modal" class="modal">
-            <a class="close-modal" href="#">close</a>
-            <h1>Your room link:</h1>
-            <p>Share this with the people you want to join. NOTE: This room will be forgotten when you leave it or close this window.</p>
-            <textarea id="new-room-id"></textarea>
-        </div>
-        <div id="request-modal" class="modal">
-            <a class="close-modal" href="#">close</a>
-            <h1>Here is your request code:</h1>
-            <p>Share this with the room owner so they can approve you to join.</p>
-            <textarea id="request-code"></textarea>
-        </div>
-        <div id="approve-modal" class="modal">
-            <a class="close-modal" href="#">close</a>
-            <h1>Approve the following user code:</h1>
-            <textarea id="approve-code"></textarea>
-            <button id="approve">Approve</button>
-        </div>
-        <div id="start-modal" class="modal">
-            <h1>Welcome to the WebRTC Data Demo</h1>
-            <a id="new" href="#">Create a new room</a>
-            <a id="join" href="#">Join an existing room</a>
-        </div>
-        -->
+            //Base 58 encoder/decoder from https://gist.github.com/diafygi/90a3e80ca1c2793220e5/
+            var MAP = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+            var toB58 = function(B,A){var d=[],s="",i,j,c,n;for(i in B){j=0,c=B[i];s+=c||s.length^i?"":1;while(j in d||c){n=d[j];n=n?n*256+c:c;c=n/58|0;d[j]=n%58;j++}}while(j--)s+=A[d[j]];return s};
+            var fromB58 = function(S,A){var d=[],b=[],i,j,c,n;for(i in S){j=0,c=A.indexOf(S[i]);if(c<0)return undefined;c||b.length^i?i:b.push(0);while(j in d||c){n=d[j];n=n?n*58+c:c;c=n>>8;d[j]=n%256;j++}}while(j--)b.push(d[j]);return new Uint8Array(b)};
 
-        <!--
-        <button id="creatOffer">createOffer</button>
-        offerPayload: <input id="offerPayload"/>
-        answerPayload: <input id="answerPayload"/>
-        -->
-        <script>
+            //random string generator (base58 encoded)
+            function randomString(len){
+                var bytes = window.crypto.getRandomValues(new Uint8Array(len));
+                return toB58(bytes, MAP);
+            }
+
+            //base58 encode a UTF-8 string
+            function strToB58(str){
+                var bytes = new Uint8Array(str.length);
+                for(var i = 0; i < str.length; i++){
+                    bytes[i] = str.charCodeAt(i);
+                }
+                return toB58(bytes, MAP);
+            }
+
+            //decode a UTF-8 string from a base58 string
+            function b58ToStr(b58){
+                return String.fromCharCode.apply(null, fromB58(b58, MAP));
+            }
+
             //print any errors
             function error(err){console.error(err);}
             function ignore(){}
@@ -176,6 +228,393 @@
             var RTCIceCandidate = window.RTCIceCandidate
                 || window.mozRTCIceCandidate
                 || window.webkitRTCIceCandidate;
+
+
+            /***********************
+            ************************
+            **** Chat Functions ****
+            ************************
+            ***********************/
+
+            /*
+                STATE = {
+                    room: "<random_string>",
+                    users: [
+                        //RTCPeerConnection objects that are extended with:
+                        //  RTCPeerConnection.username = "<random_string>" //the username of the connected user
+                        //  RTCPeerConnection.iceCandidates = [] //list of ice candidates
+                        //  RTCPeerConnection.dc = DataChannel //the datachannel for the connection
+                        //  RTCPeerConnection.queue = Array([...]) //pending messages not sent yet
+                        <peerConnection>,
+                        <peerConnection>,
+                        ...
+                    ],
+                    logs: [
+                        {
+                            id: "<random_string>",
+                            type: "message", //(message|file|join|leave)
+                            timestamp: 1234567890,
+                            username: "<random_string>",
+
+                            //message
+                            message: "Hello world!",
+
+                            //file
+                            filename: "abc.jpg",
+                            file: <Blob>,
+                            chunks: {
+                                0: <Blob>,
+                                1: <Blob>,
+                                2: null,
+                                3: <Blob>,
+                            },
+
+                            //join
+                            joined: "<random_string>",
+
+                            //leave
+                            left: "<random_string>",
+                        },
+                        ...
+                    ],
+                }
+            */
+            var STATE = {
+                username: undefined,
+                users: [],
+                logs: [],
+            };
+            function resetState(){
+                STATE = {
+                    username: randomString(8),
+                    users: [],
+                    logs: [],
+                };
+            }
+
+            //receive a message from a peer connection
+            /*
+                data = {
+                    id: "<random_string>",
+                    type: "message", //(message|file|room|join|leave)
+                    timestamp: 1234567890,
+
+                    //message
+                    message: "Hello World!",
+
+                    //file
+                    filename: "abc.jpg",
+                    chunkIndex: 1,
+                    chunkLength: 10,
+                    chunk: ArrayBuffer([...]),
+
+                    //room
+                    roomname: "<random_string>",
+                    userlist: ["<random_string>", ...],
+
+                    //join
+                    username: "<random_string>",
+
+                    //leave
+                    username: "<random_string>",
+                }
+            */
+            function receiveOpen(data){} //#########################
+            function receiveMessage(data){} //#########################
+            function receiveClose(data){} //#########################
+            function sendMessage(msg){} //#########################
+            function sendFile(blob, i){} //#########################
+            function sendJoin(username){} //#########################
+            function sendLeave(username){} //#########################
+
+
+            /************************
+            *************************
+            **** Event Listeners ****
+            *************************
+            ************************/
+
+            //make a new chat room that you host
+            function newRoom(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+
+                //show pending
+                document.getElementById("new-room").onclick = ignore;
+                document.getElementById("new-room").innerHTML = "Generating room...";
+
+                //reset state
+                resetState();
+
+                //update room name
+                document.getElementById("room-name").innerHTML = "";
+                var roomName = document.createTextNode(STATE.username);
+                document.getElementById("room-name").appendChild(roomName);
+
+                //update user list
+                document.getElementById("userlist").innerHTML = "";
+                var onlyUser = document.createTextNode(STATE.username + " (you) ");
+                var userLi = document.createElement("li");
+                userLi.appendChild(onlyUser);
+                document.getElementById("userlist").appendChild(userLi);
+
+                //show the invite and approve user links (since you are the host)
+                document.getElementById("open-invite").style.display = "inline-block";
+                document.getElementById("open-approve").style.display = "inline-block";
+                document.getElementById("open-leave").style.display = "inline-block";
+
+                //close the modal
+                document.getElementById("start-modal").style.display = "none";
+                document.getElementById("modal-wrapper").style.display = "none";
+                resizer();
+
+                //reset the new room link
+                document.getElementById("new-room").innerHTML = "Create a new room";
+                document.getElementById("new-room").onclick = newRoom;
+
+                //reset chat list
+                renderChat();
+            }
+
+            //update the chat window based on the STATE logs
+            function renderChat(){
+
+                //make reference for log ids
+                var newLogs = {};
+                for(var i = 0; i < STATE.logs.length; i++){
+                    var liId = "log_" + STATE.logs[i].id;
+                    newLogs[liId] = true;
+                }
+
+                //remove old chat
+                var existingChat = document.querySelectorAll("#room > li");
+                var existingIds = {};
+                for(var i = 0; i < existingChat.length; i++){
+                    if(newLogs[existingChat[i].id] === undefined){
+                        var delLog = existingChat[i];
+                        delLog.parentNode.removeChild(delLog);
+                    }
+                    else{
+                        existingIds[existingChat[i].id] = true;
+                    }
+                }
+
+                //insert new logs and update existing logs
+                for(var i = 0; i < STATE.logs.length; i++){
+                    var liId = "log_" + STATE.logs[i].id;
+
+                    //skip if log entry already exists and not a file update
+                    if(STATE.logs[i] !== "file" && existingIds[liId] !== undefined){
+                        continue;
+                    }
+
+                    //build the base-level chat log with username and date
+                    var spans = [];
+                    var date_str = (new Date(STATE.logs[i].timestamp)).toLocaleString();
+                    var date_span = document.createElement("span");
+                    date_span.className = "date";
+                    date_span.appendChild(document.createTextNode(date_str));
+                    spans.push(date_span);
+
+                    var user_str = STATE.logs[i].username + ":";
+                    var user_span = document.createElement("span");
+                    user_span.className = "user";
+                    user_span.appendChild(document.createTextNode(user_str));
+                    spans.push(user_span);
+
+                    //message log
+                    if(STATE.logs[i].type === "message"){
+                        var message_span = document.createElement("span");
+                        message_span.className = "message";
+                        message_span.appendChild(document.createTextNode(STATE.logs[i].message));
+                        spans.push(message_span);
+                    }
+
+                    //file log
+                    if(STATE.logs[i].type === "file"){
+                        var file_span = document.createElement("span");
+                        file_span.className = "message";
+                        file_span.appendChild(document.createTextNode(STATE.logs[i].filename));
+                        spans.push(file_span);
+                    }
+
+                    //join log
+                    if(STATE.logs[i].type === "join"){
+                        var join_str = STATE.logs[i].joined + " joined";
+                        var join_span = document.createElement("span");
+                        join_span.className = "message";
+                        join_span.appendChild(document.createTextNode(join_str));
+                        spans.push(join_span);
+                    }
+
+                    //leave log
+                    if(STATE.logs[i].type === "leave"){
+                        var leave_str = STATE.logs[i].joined + " left";
+                        var leave_span = document.createElement("span");
+                        leave_span.className = "message";
+                        leave_span.appendChild(document.createTextNode(leave_str));
+                        spans.push(leave_span);
+                    }
+
+                    //see if the log already exists
+                    var li = document.getElementById(liId);
+                    if(li === null){
+                        //make a new log entry
+                        li = document.createElement("li");
+                        li.id = liId;
+                        document.getElementById("room").appendChild(li);
+                    }
+
+                    //insert the log content
+                    for(var j = 0; j < spans.length; j++){
+                        li.appendChild(spans[j]);
+                    }
+                }
+            }
+            document.getElementById("new-room").onclick = newRoom;
+
+            //create an invite link
+            function generateInvite(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+
+                //show the modal
+                document.getElementById("invite-modal").style.display = "inline-block";
+                document.getElementById("modal-wrapper").style.display = "block";
+                document.getElementById("open-invite").onclick = ignore;
+                document.getElementById("generate-invite").onclick = ignore;
+                document.getElementById("generate-invite").innerHTML = "Generating...";
+                document.getElementById("invite-code").value = "Generating...";
+
+                //create new peer connection
+                var pc = new RTCPeerConnection({iceServers: [{url: "stun:stun.services.mozilla.com"}]});
+                pc.iceCandidates = [];
+
+                //create the data channel for the initiator
+                pc.dc = pc.createDataChannel("");
+                pc.dc.binaryType = "arraybuffer";
+                pc.dc.onopen = receiveOpen;
+                pc.dc.onmessage = receiveMessage;
+
+                //create a new offer
+                pc.createOffer(function(localOffer){
+                    pc.localOffer = localOffer
+
+                    //populate ICE candidates
+                    pc.onicecandidate = function(evt){
+                        if(evt.candidate){
+                            pc.iceCandidates.push(evt.candidate.candidate.split("candidate:")[1]);
+                        }
+                        //done collecting ice candidates
+                        else{
+                            //save the new peer connection
+                            STATE.users.push(pc);
+
+                            //generate the invite code
+                            var offerB58 = "https://diafygi.github.io/webrtc-chat/#" +
+                                strToB58(JSON.stringify([
+                                    pc.localOffer.sdp.replace(/\r/g, ""),
+                                    pc.iceCandidates,
+                                ])
+                            );
+
+                            //reset the modal
+                            document.getElementById("open-invite").onclick = generateInvite;
+                            document.getElementById("generate-invite").onclick = generateInvite;
+                            document.getElementById("generate-invite").innerHTML = "Generate new invite";
+                            document.getElementById("invite-code").value = offerB58;
+
+                            //reset chat list
+                            renderChat();
+                        }
+                    };
+
+                    //trigger STUN requests
+                    pc.setLocalDescription(localOffer, ignore, error);
+                }, error);
+            }
+            document.getElementById("open-invite").onclick = generateInvite;
+            document.getElementById("generate-invite").onclick = generateInvite;
+
+            //close the generate invite modal
+            function closeInvite(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+                document.getElementById("invite-modal").style.display = "none";
+                document.getElementById("modal-wrapper").style.display = "none";
+            }
+            document.getElementById("close-invite").onclick = closeInvite;
+
+            //join a room manually
+            function joinRoom(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+
+                //switch modals to the join modal and clear the textarea
+                document.getElementById("start-modal").style.display = "none";
+                document.getElementById("join-modal").style.display = "inline-block";
+                document.getElementById("join-code").value = "";
+            }
+            document.getElementById("join-room").onclick = joinRoom;
+
+            //close the manual join modal (this goes back to the start modal)
+            function closeJoin(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+                document.getElementById("join-modal").style.display = "none";
+                document.getElementById("start-modal").style.display = "inline-block";
+            }
+            document.getElementById("close-join").onclick = closeJoin;
+
+            //clear the current chat and go back to the start modal
+            function leaveChat(evt, dontask){
+                if(evt && evt.preventDefault) evt.preventDefault();
+
+                //ask for confirmation before deleting everything
+                if((!dontask) && !window.confirm("Are you sure want to leave? All chat data will be deleted.")){
+                    return;
+                }
+
+                //reset state
+                resetState();
+                renderChat();
+                document.getElementById("room-name").innerHTML = "";
+                document.getElementById("userlist").innerHTML = "";
+                document.getElementById("open-invite").style.display = "none";
+                document.getElementById("open-approve").style.display = "none";
+                document.getElementById("open-leave").style.display = "none";
+
+                //show the start modal
+                document.getElementById("start-modal").style.display = "inline-block";
+                document.getElementById("modal-wrapper").style.display = "block";
+            }
+            document.getElementById("open-leave").onclick = leaveChat;
+
+
+
+
+
+
+
+
+
+
+            document.getElementById("open-approve").onclick = function(){}; //#########################
+            document.getElementById("close-approve").onclick = function(){}; //#########################
+            document.getElementById("approve-request").onclick = function(){}; //#########################
+
+            document.getElementById("generate-request").onclick = function(){}; //#########################
+            document.getElementById("close-request").onclick = function(){}; //#########################
+
+            document.getElementById("submit").onclick = function(){}; //#########################
+            document.getElementById("upload").onclick = function(){}; //#########################
+
+            function kick(){} //#########################
+            function download(){} //#########################
+
+
+
+
+            //trigger leaving the room
+            leaveChat(undefined, true);
+
+
+            /*
 
             //create a new connection
             var peerConnection = new RTCPeerConnection({iceServers: [{url: "stun:stun.services.mozilla.com"}]});
@@ -309,6 +748,7 @@
                     }
                 }, error);
             };
+            */
         </script>
     </body>
 </html>
