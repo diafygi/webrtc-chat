@@ -144,6 +144,7 @@
                 <p>Copy this link and share it with the person you want to invite. NOTE: Each invite can only be used once, so generate a new one for each person.</p>
                 <p><a id="generate-invite" href="#">Generate new invite</a></p>
                 <textarea id="invite-code" readonly="readonly" autocomplete="off"></textarea>
+                <p><a id="invite-approve" href="#">Approve user request codes</a></p>
             </div>
             <div id="request-modal" class="modal" style="display:none;">
                 <a id="close-request" class="close-modal" href="#">cancel</a>
@@ -155,7 +156,7 @@
                 <a id="close-approve" class="close-modal" href="#">cancel</a>
                 <h1>Approve a request code:</h1>
                 <p>Paste the request code you received and click Approve.</p>
-                <textarea id="approve-code" autocomplete="off" placeholder="e.g. invite=asfjhjrifbvuy4785uhgfyew3895grvesufns...."></textarea>
+                <textarea id="approve-code" autocomplete="off" placeholder="e.g. request_code=asfjhjrifbvuy4785uhgfyew3895grvesufns...."></textarea>
                 <button id="approve-request">Approve</button>
             </div>
             <div id="join-modal" class="modal" style="display:none;">
@@ -266,12 +267,13 @@
                             id: "<random_string>",
                             type: "message", //(message|file|join|leave)
                             timestamp: 1234567890,
-                            username: "<random_string>",
 
                             //message
+                            username: "<random_string>",
                             message: "Hello world!",
 
                             //file
+                            username: "<random_string>",
                             filename: "abc.jpg",
                             file: <Blob>,
                             chunks: {
@@ -280,13 +282,19 @@
                                 2: null,
                                 3: <Blob>,
                             },
+
+                            //join
+                            username: "<random_string>",
+
+                            //leave
+                            username: "<random_string>",
                         },
                         ...
                     ],
                 }
             */
             var STATE = {
-                username: undefined,
+                username: randomString(8),
                 users: {},
                 logs: [],
             };
@@ -371,15 +379,23 @@
                 li.appendChild(kick);
                 document.getElementById("userlist").appendChild(li);
 
+                //update the log and chat window
+                msg = {
+                    id: randomString(12),
+                    type: "join",
+                    timestamp: (new Date()).getTime(),
+                    username: this.username,
+                }
+                STATE.logs.push(msg);
+                renderChat();
+
                 //send a join notification to all the other users
                 for(var k in STATE.users){
-                    if(STATE.users[k].dc.username !== this.username){
-                        STATE.users[k].dc.send(JSON.stringify({
-                            id: randomString(12),
-                            type: "join",
-                            timestamp: (new Date()).getTime(),
-                            username: this.username,
-                        }));
+                    if(STATE.users[k].dc.username
+                       && STATE.users[k].dc.username !== this.username
+                       && STATE.users[k].iceConnectionState === "connected"
+                    ){
+                        STATE.users[k].dc.send(JSON.stringify(msg));
                     }
                 }
             }
@@ -442,7 +458,7 @@
                     //update the user list
                     var li = document.createElement("li");
                     var uname_span = document.createElement("span");
-                    var uname_str = data.userlist[i];
+                    var uname_str = data.username;
                     uname_span.appendChild(document.createTextNode(uname_str));
                     li.appendChild(uname_span);
                     document.getElementById("userlist").appendChild(li);
@@ -471,7 +487,7 @@
                 }
 
                 //relay messages to other users
-                if(["message", "join", "leave"].indexOf(data.type) !== -1){
+                if(["message", "file"].indexOf(data.type) !== -1){
                     for(var k in STATE.users){
                         if(STATE.users[k].dc.username
                            && STATE.users[k].dc.username !== data.username
@@ -752,12 +768,15 @@
             //open the approval modal
             function openApprove(evt){
                 if(evt && evt.preventDefault) evt.preventDefault();
-                document.getElementById("approve-code").style.display = "";
-                document.getElementById("approve-request").style.display = "Approve";
+                document.getElementById("approve-code").value = "";
+                document.getElementById("invite-modal").style.display = "none";
                 document.getElementById("approve-modal").style.display = "inline-block";
                 document.getElementById("modal-wrapper").style.display = "block";
+                document.getElementById("approve-request").innerHTML = "Approve";
+                document.getElementById("approve-request").onclick = approveRequest;
             }
             document.getElementById("open-approve").onclick = openApprove;
+            document.getElementById("invite-approve").onclick = openApprove;
 
             //close the approval modal
             function closeApprove(evt){
@@ -898,7 +917,6 @@
             //close the request modal and go back
             function closeRequest(evt){
                 if(evt && evt.preventDefault) evt.preventDefault();
-                window.location.hash = "";
                 document.getElementById("join-modal").style.display = "inline-block";
                 document.getElementById("request-modal").style.display = "none";
                 document.getElementById("modal-wrapper").style.display = "block";
@@ -943,6 +961,7 @@
             //see if there's an invite code in the url (i.e. someone clicked on a link)
             if(window.location.hash !== ""){
                 document.getElementById("join-code").value = window.location.hash;
+                window.location.hash = "";
                 generateRequest();
             }
             //default is just the start modal
