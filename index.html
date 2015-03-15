@@ -34,6 +34,7 @@
             #room > li{padding:10px 5px 10px 10px;list-style:none;border-bottom:1px solid #eeeeee;}
             #room > li > *{vertical-align:top;display:inline-block;}
             #room > li > .date{float:right;}
+            #room > li > .user{padding-right:10px;}
 
             #form{display:table;width:100%;margin-top:10px;}
             #form > *{display:table-cell;vertical-align:middle;}
@@ -118,7 +119,7 @@
             <div id="form-wrapper">
                 <form id="form">
                     <div id="input-wrapper">
-                        <input id="input" placeholder="type message here"/>
+                        <input id="input" autocomplete="off" placeholder="type message here"/>
                     </div>
                     <div id="submit-wrapper">
                         <input id="submit" type="submit" value="Submit"/>
@@ -140,26 +141,26 @@
                 <h1>Your new invite link:</h1>
                 <p>Copy this link and share it with the person you want to invite. NOTE: Each invite can only be used once, so generate a new one for each person.</p>
                 <p><a id="generate-invite" href="#">Generate new invite</a></p>
-                <textarea id="invite-code" readonly="readonly"></textarea>
+                <textarea id="invite-code" readonly="readonly" autocomplete="off"></textarea>
             </div>
             <div id="request-modal" class="modal" style="display:none;">
-                <a id="close-request" class="close-modal" href="#">close</a>
+                <a id="close-request" class="close-modal" href="#">cancel</a>
                 <h1>Here is your request code:</h1>
-                <p>Copy this request code and share it with the person who invited you.</p>
-                <textarea id="request-code"></textarea>
+                <p>You need to request to join this chat room. Copy this request code and share it with the person who invited you.</p>
+                <textarea id="request-code" autocomplete="off"></textarea>
             </div>
             <div id="approve-modal" class="modal" style="display:none;">
                 <a id="close-approve" class="close-modal" href="#">cancel</a>
                 <h1>Approve a request code:</h1>
                 <p>Paste the request code you received and click Approve.</p>
-                <textarea id="approve-code" placeholder="e.g. invite=asfjhjrifbvuy4785uhgfyew3895grvesufns...."></textarea>
+                <textarea id="approve-code" autocomplete="off" placeholder="e.g. invite=asfjhjrifbvuy4785uhgfyew3895grvesufns...."></textarea>
                 <button id="approve-request">Approve</button>
             </div>
             <div id="join-modal" class="modal" style="display:none;">
                 <a id="close-join" class="close-modal" href="#">back</a>
                 <h1>Paste the invite:</h1>
                 <p>Paste the invite link you received to generate a request code.</p>
-                <textarea id="join-code" placeholder="e.g. https://diafygi.github.com/webrtc-chat/#asfjhjrifbvuy4ns...."></textarea>
+                <textarea id="join-code" autocomplete="off" placeholder="e.g. https://diafygi.github.com/webrtc-chat/#asfjhjrifbvuy4ns...."></textarea>
                 <button id="generate-request">Generate request code</button>
             </div>
             <div id="start-modal" class="modal" style="display:none;">
@@ -268,12 +269,6 @@
                                 2: null,
                                 3: <Blob>,
                             },
-
-                            //join
-                            joined: "<random_string>",
-
-                            //leave
-                            left: "<random_string>",
                         },
                         ...
                     ],
@@ -281,16 +276,31 @@
             */
             var STATE = {
                 username: undefined,
-                users: [],
+                users: {},
                 logs: [],
             };
             function resetState(){
                 STATE = {
                     username: randomString(8),
-                    users: [],
+                    users: {},
                     logs: [],
                 };
             }
+            function getUsernames(){
+                var usernames = [STATE.username];
+                for(var k in STATE.users){
+                    if(STATE.users[k].dc.username){
+                        usernames.push(STATE.users[k].dc.username);
+                    }
+                }
+                return usernames;
+            }
+
+            /**************************
+            ***************************
+            **** Message Listeners ****
+            ***************************
+            **************************/
 
             //receive a message from a peer connection
             /*
@@ -300,9 +310,11 @@
                     timestamp: 1234567890,
 
                     //message
+                    username: "<random_string>",
                     message: "Hello World!",
 
                     //file
+                    username: "<random_string>",
                     filename: "abc.jpg",
                     chunkIndex: 1,
                     chunkLength: 10,
@@ -319,20 +331,153 @@
                     username: "<random_string>",
                 }
             */
-            function receiveOpen(data){} //#########################
-            function receiveMessage(data){} //#########################
-            function receiveClose(data){} //#########################
-            function sendMessage(msg){} //#########################
-            function sendFile(blob, i){} //#########################
-            function sendJoin(username){} //#########################
-            function sendLeave(username){} //#########################
 
+            //A remote user has been approved and a connection has been established
+            function receiveRemoteOpen(evt){
+                //close the approval modal
+                document.getElementById("approve-modal").style.display = "none";
+                document.getElementById("modal-wrapper").style.display = "none";
 
-            /************************
-            *************************
-            **** Event Listeners ****
-            *************************
-            ************************/
+                //send the current room state to the user
+                evt.target.send(JSON.stringify({
+                    id: randomString(12),
+                    type: "room",
+                    timestamp: (new Date()).getTime(),
+                    roomname: STATE.username,
+                    userlist: getUsernames(),
+                }));
+
+                //Add their name to the user list
+                var li = document.createElement("li");
+                li.id = "user_" + this.username;
+                var uname_span = document.createElement("span");
+                uname_span.appendChild(document.createTextNode(this.username));
+                li.appendChild(uname_span);
+                var kick = document.createElement("a");
+                kick.innerHTML = "X";
+                kick.href = "#";
+                kick.onclick = kickUser;
+                li.appendChild(kick);
+                document.getElementById("userlist").appendChild(li);
+
+                //send a join notification to all the other users
+                for(var k in STATE.users){
+                    if(STATE.users[k].dc.username !== this.username){
+                        STATE.users[k].dc.send(JSON.stringify({
+                            id: randomString(12),
+                            type: "join",
+                            timestamp: (new Date()).getTime(),
+                            username: this.username,
+                        }));
+                    }
+                }
+            }
+
+            //A host has approved your request and a connection has been established
+            function receiveInitiatorOpen(evt){
+                //close the request modal
+                document.getElementById("join-modal").style.display = "none";
+                document.getElementById("start-modal").style.display = "none";
+                document.getElementById("request-modal").style.display = "none";
+                document.getElementById("modal-wrapper").style.display = "none";
+
+                //update the room name as connecting
+                document.getElementById("room-name").innerHTML = "Connecting...";
+            }
+            function receiveMessage(evt){
+                //string message (message|room|join|leave)
+                if(typeof(evt.data) === "string"){
+                    var data = JSON.parse(evt.data);
+                }
+                //arraybuffer message (file)
+                else{
+                    var data = {type: "file"};
+                }
+
+                //room messages
+                if(data.type === "room"){
+                    //update the name of the room
+                    document.getElementById("room-name").innerHTML = "";
+                    document.getElementById("room-name").appendChild(document.createTextNode(data.roomname))
+                    document.getElementById("open-leave").style.display = "inline-block";
+
+                    //update the users in the room
+                    document.getElementById("userlist").innerHTML = "";
+                    for(var i = 0; i < data.userlist.length; i++){
+                        var li = document.createElement("li");
+                        li.id = "user_" + data.userlist[i];
+                        var uname_span = document.createElement("span");
+                        if(data.userlist[i] === STATE.username){
+                            var uname_str = data.userlist[i] + " (you)";
+                        }
+                        else{
+                            var uname_str = data.userlist[i];
+                        }
+                        uname_span.appendChild(document.createTextNode(uname_str));
+                        li.appendChild(uname_span);
+                        document.getElementById("userlist").appendChild(li);
+                    }
+                }
+
+                //regular messages
+                else if(data.type === "message"){
+                    STATE.logs.push(data);
+                    renderChat();
+                }
+
+                //join messages
+                else if(data.type === "join"){
+
+                    //update the user list
+                    var li = document.createElement("li");
+                    var uname_span = document.createElement("span");
+                    var uname_str = data.userlist[i];
+                    uname_span.appendChild(document.createTextNode(uname_str));
+                    li.appendChild(uname_span);
+                    document.getElementById("userlist").appendChild(li);
+
+                    //update the log and chat window
+                    STATE.logs.push(data);
+                    renderChat();
+                }
+
+                //join messages
+                else if(data.type === "leave"){
+
+                    //update the user list
+                    var li = document.getElementById("user_" + data.username);
+                    li.parentNode.removeChild(li);
+
+                    //update the log and chat window
+                    STATE.logs.push(data);
+                    renderChat();
+                }
+
+                //file messages
+                else if(data.type === "file"){
+                    //TODO parse file messages################
+                    console.log("receiveMessage evt", evt);
+                }
+
+                //relay messages to other users
+                if(["message", "join", "leave"].indexOf(data.type) !== -1){
+                    for(var k in STATE.users){
+                        if(STATE.users[k].dc.username
+                           && STATE.users[k].dc.username !== data.username
+                           && STATE.users[k].iceConnectionState === "connected"
+                        ){
+                            //TODO: Figure out relaying files################
+                            STATE.users[k].dc.send(JSON.stringify(data));
+                        }
+                    }
+                }
+            }
+
+            /*********************
+            **********************
+            **** UI Listeners ****
+            **********************
+            *********************/
 
             //make a new chat room that you host
             function newRoom(evt){
@@ -439,7 +584,7 @@
 
                     //join log
                     if(STATE.logs[i].type === "join"){
-                        var join_str = STATE.logs[i].joined + " joined";
+                        var join_str = "joined the chat";
                         var join_span = document.createElement("span");
                         join_span.className = "message";
                         join_span.appendChild(document.createTextNode(join_str));
@@ -448,7 +593,7 @@
 
                     //leave log
                     if(STATE.logs[i].type === "leave"){
-                        var leave_str = STATE.logs[i].joined + " left";
+                        var leave_str = "left the chat";
                         var leave_span = document.createElement("span");
                         leave_span.className = "message";
                         leave_span.appendChild(document.createTextNode(leave_str));
@@ -467,6 +612,11 @@
                     //insert the log content
                     for(var j = 0; j < spans.length; j++){
                         li.appendChild(spans[j]);
+
+                        //scroll if on the last span
+                        if(j === spans.length - 1){
+                            li.scrollIntoView();
+                        }
                     }
                 }
             }
@@ -490,8 +640,9 @@
 
                 //create the data channel for the initiator
                 pc.dc = pc.createDataChannel("");
+                pc.dc.connId = randomString(4); //to to keep track of what invites are being responded to
                 pc.dc.binaryType = "arraybuffer";
-                pc.dc.onopen = receiveOpen;
+                pc.dc.onopen = receiveRemoteOpen;
                 pc.dc.onmessage = receiveMessage;
 
                 //create a new offer
@@ -506,11 +657,13 @@
                         //done collecting ice candidates
                         else{
                             //save the new peer connection
-                            STATE.users.push(pc);
+                            STATE.users[pc.dc.connId] = pc;
 
                             //generate the invite code
                             var offerB58 = "https://diafygi.github.io/webrtc-chat/#" +
                                 strToB58(JSON.stringify([
+                                    pc.dc.connId,
+                                    STATE.username,
                                     pc.localOffer.sdp.replace(/\r/g, ""),
                                     pc.iceCandidates,
                                 ])
@@ -585,170 +738,206 @@
             }
             document.getElementById("open-leave").onclick = leaveChat;
 
-
-
-
-
-
-
-
-
-
-            document.getElementById("open-approve").onclick = function(){}; //#########################
-            document.getElementById("close-approve").onclick = function(){}; //#########################
-            document.getElementById("approve-request").onclick = function(){}; //#########################
-
-            document.getElementById("generate-request").onclick = function(){}; //#########################
-            document.getElementById("close-request").onclick = function(){}; //#########################
-
-            document.getElementById("submit").onclick = function(){}; //#########################
-            document.getElementById("upload").onclick = function(){}; //#########################
-
-            function kick(){} //#########################
-            function download(){} //#########################
-
-
-
-
-            //trigger leaving the room
-            leaveChat(undefined, true);
-
-
-            /*
-
-            //create a new connection
-            var peerConnection = new RTCPeerConnection({iceServers: [{url: "stun:stun.services.mozilla.com"}]});
-            var iceCandidates = [];
-
-            //listen for data channel and messages
-            peerConnection.ondatachannel = function(evt){
-                var dataChannel = evt.channel;
-                dataChannel.binaryType = "arraybuffer";
-                dataChannel.onopen = function(evt){
-                    setTimeout(function(){
-                        dataChannel.send("Hello World from the receiver!");
-                    }, 500);
-                };
-                dataChannel.onmessage = function(msg){
-                    console.log("dataChannel.onmessage", msg.data);
-                };
+            //open the approval modal
+            function openApprove(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+                document.getElementById("approve-code").style.display = "";
+                document.getElementById("approve-request").style.display = "Approve";
+                document.getElementById("approve-modal").style.display = "inline-block";
+                document.getElementById("modal-wrapper").style.display = "block";
             }
+            document.getElementById("open-approve").onclick = openApprove;
 
+            //close the approval modal
+            function closeApprove(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+                document.getElementById("approve-modal").style.display = "none";
+                document.getElementById("modal-wrapper").style.display = "none";
+            }
+            document.getElementById("close-approve").onclick = closeApprove;
 
-            //initiate the connection
-            document.getElementById("creatOffer").onclick = function(evt){
+            //parse a request code as a peer connection answer
+            function approveRequest(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
 
-                //create the data channel for the initiator
-                var dataChannel = peerConnection.createDataChannel("webrtc-chat");
-                dataChannel.binaryType = "arraybuffer";
-                dataChannel.onopen = function(evt){
-                    setTimeout(function(){
-                        dataChannel.send("Hello World from the initiator!");
-                    }, 500);
-                };
-                dataChannel.onmessage = function(msg){
-                    console.log("dataChannel.onmessage", msg.data);
-                };
+                //stop any listeners
+                document.getElementById("approve-request").onclick = ignore;
+                document.getElementById("approve-request").innerHTML = "Approving...";
 
-                //create the offer payload
-                peerConnection.createOffer(function(localOffer){
+                //get rid of any request_code= prefix
+                var requestCode = document.getElementById("approve-code").value;
+                requestCode = requestCode.replace("request_code=", "");
 
-                    //build the offer payload
-                    function buildOffer(){
-                        console.log("offerPayload", window.btoa(JSON.stringify([
-                            localOffer.sdp.replace(/\r/g, ""),
-                            iceCandidates,
-                        ])));
+                //parse the request code
+                var answerPayload = JSON.parse(b58ToStr(requestCode));
+                var connId = answerPayload[0];
+                var username = answerPayload[1];
+                var sdp = answerPayload[2];
+                var iceList = answerPayload[3];
+
+                //update the peer connection with the username of the person
+                STATE.users[connId].dc.username = username;
+
+                //set the remote description for that peer connection
+                var remoteAnswer = new RTCSessionDescription({
+                    "type": "answer",
+                    "sdp": sdp,
+                });
+                STATE.users[connId].setRemoteDescription(remoteAnswer, function(){
+
+                    //add the ice candidates
+                    for(var i = 0; i < iceList.length; i++){
+                        var iceCandidate = new RTCIceCandidate({
+                            sdpMLineIndex: 0,
+                            candidate: "candidate:" + iceList[i],
+                        });
+                        STATE.users[connId].addIceCandidate(iceCandidate, ignore, error);
                     }
-
-                    //populate ICE candidates
-                    peerConnection.onicecandidate = function(evt){
-                        if(evt.candidate){
-                            iceCandidates.push(
-                                evt.candidate.candidate.split("candidate:")[1]
-                            );
-                        }
-                        else{
-                            buildOffer();
-                        }
-                    };
-
-                    //trigger STUN requests
-                    peerConnection.setLocalDescription(localOffer, ignore, error);
                 }, error);
-            };
+            }
+            document.getElementById("approve-request").onclick = approveRequest;
 
-            //wait for a offer payload (offer and ice candidates)
-            document.getElementById("offerPayload").onblur = function(evt){
-                var payload = JSON.parse(window.atob(evt.target.value));
+            //build a peer connection and an answer payload
+            function generateRequest(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+
+                //switch to the request modal and mark as generating
+                document.getElementById("join-modal").style.display = "none";
+                document.getElementById("start-modal").style.display = "none";
+                document.getElementById("request-modal").style.display = "inline-block";
+                document.getElementById("modal-wrapper").style.display = "block";
+                document.getElementById("request-code").value = "Generating...";
+
+                //get rid of any website or hash "#" prefix
+                var joinCode = document.getElementById("join-code").value;
+                var joinCodeSplit = joinCode.split("#");
+                joinCode = joinCodeSplit[joinCodeSplit.length - 1];
+
+                //parse the offer payload
+                var offerPayload = JSON.parse(b58ToStr(joinCode));
+                var connId = offerPayload[0];
+                var username = offerPayload[1];
+                var sdp = offerPayload[2];
+                var iceList = offerPayload[3];
+
+                //make a peer connection object
+                var pc = new RTCPeerConnection({iceServers: [{url: "stun:stun.services.mozilla.com"}]});
+                pc.iceCandidates = [];
+                pc.ondatachannel = function(evt){
+                    pc.dc = evt.channel;
+                    pc.dc.connId = connId;
+                    pc.dc.username = username;
+                    pc.dc.binaryType = "arraybuffer";
+                    pc.dc.onopen = receiveInitiatorOpen;
+                    pc.dc.onmessage = receiveMessage;
+                }
 
                 //configure the peer connection as a receiver of an offer
                 var offer = new RTCSessionDescription({
                     "type": "offer",
-                    "sdp": payload[0],
+                    "sdp": sdp,
                 });
-                peerConnection.setRemoteDescription(offer, function(){
+                pc.setRemoteDescription(offer, function(){
 
                     //set the ice candidates for the peer connection
-                    for(var i = 0; i < payload[1].length; i++){
+                    for(var i = 0; i < iceList.length; i++){
                         var iceCandidate = new RTCIceCandidate({
                             sdpMLineIndex: 0,
-                            candidate: "candidate:" + payload[1][i],
+                            candidate: "candidate:" + iceList[i],
                         });
-                        peerConnection.addIceCandidate(iceCandidate, ignore, error);
+                        pc.addIceCandidate(iceCandidate, ignore, error);
                     }
 
                     //create the answer payload
-                    peerConnection.createAnswer(function(answer){
-
-                        //build the answer payload
-                        function buildAnswer(){
-                            console.log("answerPayload", window.btoa(JSON.stringify([
-                                answer.sdp.replace(/\r/g, ""),
-                                iceCandidates,
-                            ])));
-                        }
+                    pc.createAnswer(function(answer){
+                        pc.answer = answer;
 
                         //populate ICE candidates
-                        peerConnection.onicecandidate = function(evt){
+                        pc.onicecandidate = function(evt){
                             if(evt.candidate){
-                                iceCandidates.push(
-                                    evt.candidate.candidate.split("candidate:")[1]
-                                );
+                                pc.iceCandidates.push(evt.candidate.candidate.split("candidate:")[1]);
                             }
+                            //done collecting ice candidates
                             else{
-                                buildAnswer();
+                                //save the new peer connection
+                                STATE.users[connId] = pc;
+
+                                //generate the invite code
+                                var offerB58 = "request_code=" +
+                                    strToB58(JSON.stringify([
+                                        connId,
+                                        STATE.username,
+                                        pc.answer.sdp.replace(/\r/g, ""),
+                                        pc.iceCandidates,
+                                    ])
+                                );
+
+                                //show the request code
+                                document.getElementById("request-code").value = offerB58;
                             }
                         };
 
                         //trigger STUN requests
-                        peerConnection.setLocalDescription(answer, ignore, error);
+                        pc.setLocalDescription(answer, ignore, error);
                     }, error);
                 }, error);
-            };
+            }
+            document.getElementById("generate-request").onclick = generateRequest;
 
-            //wait for a answer payload (answer and ice candidates)
-            document.getElementById("answerPayload").onblur = function(evt){
-                var payload = JSON.parse(window.atob(evt.target.value));
+            //close the request modal and go back
+            function closeRequest(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
+                window.location.hash = "";
+                document.getElementById("join-modal").style.display = "inline-block";
+                document.getElementById("request-modal").style.display = "none";
+                document.getElementById("modal-wrapper").style.display = "block";
+            }
+            document.getElementById("close-request").onclick = closeRequest;
 
-                //set the answer from the remote peer
-                var remoteAnswer = new RTCSessionDescription({
-                    "type": "answer",
-                    "sdp": payload[0],
-                });
-                peerConnection.setRemoteDescription(remoteAnswer, function(){
+            //send a message to all connected users
+            function sendMessage(evt){
+                if(evt && evt.preventDefault) evt.preventDefault();
 
-                    //set the ice candidates for the peer connection
-                    for(var i = 0; i < payload[1].length; i++){
-                        var iceCandidate = new RTCIceCandidate({
-                            sdpMLineIndex: 0,
-                            candidate: "candidate:" + payload[1][i],
-                        });
-                        peerConnection.addIceCandidate(iceCandidate, ignore, error);
+                //build the message packet
+                var msg = {
+                    id: randomString(12),
+                    type: "message",
+                    timestamp: (new Date()).getTime(),
+                    username: STATE.username,
+                    message: document.getElementById("input").value,
+                };
+
+                //send the message to all connected users
+                for(var k in STATE.users){
+                    if(STATE.users[k].dc.username && STATE.users[k].iceConnectionState === "connected"){
+                        STATE.users[k].dc.send(JSON.stringify(msg));
                     }
-                }, error);
-            };
-            */
+                }
+
+                //update the log and render the chat
+                STATE.logs.push(msg);
+                renderChat();
+                document.getElementById("input").value = "";
+            }
+            document.getElementById("submit").onclick = sendMessage;
+
+
+            //incomplete
+            document.getElementById("upload").onclick = function(){}; //#########################
+            function kickUser(){} //#########################
+            function downloadData(){} //#########################
+
+
+
+            //see if there's an invite code in the url (i.e. someone clicked on a link)
+            if(window.location.hash !== ""){
+                document.getElementById("join-code").value = window.location.hash;
+                generateRequest();
+            }
+            //default is just the start modal
+            else{
+                leaveChat(undefined, true);
+            }
         </script>
     </body>
 </html>
