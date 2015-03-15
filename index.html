@@ -69,6 +69,8 @@
             .modal > p{text-align:left;margin:10px 0px;}
             .modal > button{font-size:16px;margin-top:10px;border:1px solid #555555;
                 box-shadow: 2px 2px 3px #777777;background-color:#eeeeee;}
+            #start-modal > a{display:inline-block;margin:10px 30px;font-size:16px;}
+            #start-modal > p{text-align:center;font-size:16px;color:#ff0000;}
         </style>
     </head>
     <body>
@@ -165,8 +167,17 @@
             </div>
             <div id="start-modal" class="modal" style="display:none;">
                 <h1>Encrypted P2P Chat Demo</h1>
-                <a id="new-room" href="#">Create a new room</a>
-                <a id="join-room" href="#">Join an existing room</a>
+                <p>Experimental! Don't use for real secrets!</p>
+                <a id="new-room" href="#">
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAD/ElEQVR42u3dy0tUcRTAcbUH2iJbBL0J4dYqXCRWREFZi4jctLCoPyBTo1UYBG3KzAiDaNGiVaBB1l4orHUY0UaK6EXgoxY9pLSE6vyY3yZD5nV+M79z5zvw3UXMnPOZ4Tpz505VkiRVVLkxBAAwBAAQAAgABAACAAGAAKDRSqldGpLGpT+UV25md6UTfpZmADRL96U5lqiWm+U9qSlmAOv9nWRhYXOvCutiA3BMmmY5JeubdCQGADXSdRZStvql6nIBWOIP8FhEebsjLS41AKdukOFH0+1CXwkKBdDH0KPrYqkAtEq/GXh0uZ0cDA2gXppk2FG/ebQ8JACO+OPvWigAa6VZBhx9M9LqEAB6Ga6ZerQBuD8xPjBYM73P9c/CXAFsZ6jmatYE0M1AzXVGEwCf8tlrSBPAcwZqrmeaAD4ZHsSUdFJak+OBUbX/vL3T+OP+qAlg1vDR8IYiPvHcaPivnxlNAFafBXsUTppoMfz4KxrAa8XT3d4CwF4PFAE8BIC9hhUBDAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAmJf7ptGA/wZrV6BaFQG0Bryfbgbukns/KwXAWJK5cbn2f9ssvUw7gC9J5qLSLHzh7yJOpxlAH0vOWn+aARxmwVlrSzOAAyw4a4cAAAAAAAAAAAAAAAAAAAAAAAAAAAAA0gCgjQVn7XiaAdxkwVm7lWYA7jyARpa8YFulX2k/H8D96NQ+lv1f+5PM9X0r5pSwUf9ydyNQHYrL6Qh4P90MnnJOIOcEAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACY34gigBEA2GtcqlZYvvs/JgBgM40vox41/PjVAPwwOoDPUlMRy9+WZK5uavGxf9cEMGX4WTAjXZV2SZuS7Df3b3YnmSt2zhp+3JOaAEYND6JSe6IJYJCBmmtAE8BpBmquLk0AjQzUXFs0AbheMFQzjeW613wAnGWwZuoOAWCF9JXhRp9736I+BADXeQYcfefy2Wm+AGqlVww52tyPTi0NCcC1I9G9lBnp5H52rjnffRb6HvkpBh5d7YXssphPyS4z9Gi6UOgei/2o9ArDL3s9xexQ42wZ9zbxHIsoee44rLPY/WmdMrVTesdSStYbfzBeFQsA1zKp13/+zpLCndvgXvLrtPYW4qLHqzyECRamen7jJT9b1X2FvPr1IqnFi33sz1BhmbnlnjyP/Oz2SjWh9lTqS6LXecUNCbf5twY/m9pS7oTr9Fd4DAEADAEABAACAAGAAEAAoMrpLwXWZv9j25wDAAAAAElFTkSuQmCC"/>
+                    <br/>
+                    Create a new room
+                </a>
+                <a id="join-room" href="#">
+                    <img src="data:image/png;base64,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"/>
+                    <br/>
+                    Join an existing room
+                </a>
             </div>
         </div>
         <script>
